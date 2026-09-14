@@ -18,7 +18,7 @@ export const Route = createFileRoute("/")({
 });
 
 function Index() {
-  const { user, isLoading } = useAuth();
+  const { user } = useAuth();
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center px-4">
@@ -28,11 +28,7 @@ function Index() {
           Applicant Tracking System för enkel rekrytering
         </p>
         <div className="mt-8">
-          {isLoading ? (
-            <Button disabled size="lg">
-              Laddar…
-            </Button>
-          ) : user ? (
+          {user ? (
             <Button asChild size="lg">
               <Link to="/dashboard">Gå till dashboard</Link>
             </Button>
