@@ -190,6 +190,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_list_accounts: {
+        Args: never
+        Returns: {
+          customer_name: string
+          email: string
+          full_name: string
+          id: string
+          role: string
+        }[]
+      }
       user_customer_id: { Args: never; Returns: string }
       user_role: { Args: never; Returns: string }
     }
