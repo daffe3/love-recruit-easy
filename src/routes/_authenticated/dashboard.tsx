@@ -37,6 +37,9 @@ function Dashboard() {
         <p className="mt-2 text-muted-foreground">
           Välkommen till ATS. Här kommer rekryteringsöversikten att visas.
         </p>
+        <Button className="mt-6" asChild>
+          <Link to="/customer">Hantera jobb</Link>
+        </Button>
       </main>
     </div>
   );
