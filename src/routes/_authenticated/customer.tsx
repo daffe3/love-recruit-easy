@@ -119,6 +119,9 @@ function CustomerJobsPage() {
   const [pipelineJobFilter, setPipelineJobFilter] = useState("all");
   const [pipelineNameFilter, setPipelineNameFilter] = useState("");
 
+  const [assessRow, setAssessRow] = useState<PipelineRow | null>(null);
+  const [cvText, setCvText] = useState("");
+
   const profileQuery = useQuery({
     queryKey: ["my-profile", user?.id],
     enabled: Boolean(user?.id),
@@ -183,7 +186,9 @@ function CustomerJobsPage() {
     queryFn: async (): Promise<PipelineRow[]> => {
       const { data, error } = await supabase
         .from("candidate_pipeline")
-        .select("id, candidate_id, job_id, stage, candidates(name), jobs!inner(title, customer_id)")
+        .select(
+          "id, candidate_id, job_id, stage, ai_score, ai_summary, candidates(name), jobs!inner(title, description, customer_id)",
+        )
         .eq("jobs.customer_id", activeCustomerId);
       if (error) throw error;
       return (data ?? []) as unknown as PipelineRow[];
