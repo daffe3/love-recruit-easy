@@ -46,6 +46,27 @@ type CandidateRow = {
 
 type CustomerRow = { id: string; name: string };
 
+type PipelineRow = {
+  id: string;
+  candidate_id: string;
+  job_id: string;
+  stage: string;
+  candidates: { name: string } | null;
+  jobs: { title: string } | null;
+};
+
+const STAGES: { value: string; label: string }[] = [
+  { value: "new", label: "Nya" },
+  { value: "screening", label: "Screening" },
+  { value: "interview", label: "Intervju" },
+  { value: "offer", label: "Erbjudande" },
+  { value: "hired", label: "Anställd" },
+  { value: "rejected", label: "Avslag" },
+];
+
+const stageLabel = (value: string) =>
+  STAGES.find((s) => s.value === value)?.label ?? value;
+
 export const Route = createFileRoute("/_authenticated/customer")({
   head: () => ({
     meta: [
