@@ -8,6 +8,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -51,8 +60,10 @@ type PipelineRow = {
   candidate_id: string;
   job_id: string;
   stage: string;
+  ai_score: number | null;
+  ai_summary: string | null;
   candidates: { name: string } | null;
-  jobs: { title: string } | null;
+  jobs: { title: string; description: string | null } | null;
 };
 
 const STAGES: { value: string; label: string }[] = [
