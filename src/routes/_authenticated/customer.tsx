@@ -166,6 +166,19 @@ function CustomerJobsPage() {
     },
   });
 
+  const pipelineQuery = useQuery({
+    queryKey: ["pipeline", activeCustomerId],
+    enabled: activeCustomerId !== "",
+    queryFn: async (): Promise<PipelineRow[]> => {
+      const { data, error } = await supabase
+        .from("candidate_pipeline")
+        .select("id, candidate_id, job_id, stage, candidates(name), jobs!inner(title, customer_id)")
+        .eq("jobs.customer_id", activeCustomerId);
+      if (error) throw error;
+      return (data ?? []) as unknown as PipelineRow[];
+    },
+  });
+
   const resetForm = () => {
     setTitle("");
     setDescription("");
