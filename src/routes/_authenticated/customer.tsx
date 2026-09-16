@@ -299,6 +299,55 @@ function CustomerJobsPage() {
     onError: (error: Error) => toast.error(error.message || "Kunde inte flytta kandidaten"),
   });
 
+  const assessCv = useMutation({
+    mutationFn: async (row: PipelineRow) => {
+      const { data, error } = await supabase.functions.invoke("assess-cv", {
+        body: {
+          pipeline_id: row.id,
+          cv_text: cvText.trim(),
+          job_description: row.jobs?.description ?? "",
+        },
+      });
+      if (error) {
+        let message = error.message || "Bedömningen misslyckades";
+        const context = (error as { context?: { text?: () => Promise<string> } }).context;
+        if (context && typeof context.text === "function") {
+          try {
+            const parsed = JSON.parse(await context.text()) as {
+              error?: string;
+              message?: string;
+            };
+            message = parsed.error ?? parsed.message ?? message;
+          } catch {
+            // behåll standardmeddelandet
+          }
+        }
+        throw new Error(message);
+      }
+      if (data && typeof data === "object" && "error" in data) {
+        throw new Error(String((data as { error: unknown }).error));
+      }
+      const result = data as { ai_score?: number | null; ai_summary?: string | null } | null;
+      if (result && (result.ai_score != null || result.ai_summary != null)) {
+        const { error: updateError } = await supabase
+          .from("candidate_pipeline")
+          .update({
+            ai_score: result.ai_score ?? null,
+            ai_summary: result.ai_summary ?? null,
+          })
+          .eq("id", row.id);
+        if (updateError) throw updateError;
+      }
+    },
+    onSuccess: () => {
+      toast.success("CV:t har bedömts");
+      setAssessRow(null);
+      setCvText("");
+      void queryClient.invalidateQueries({ queryKey: ["pipeline"] });
+    },
+    onError: (error: Error) => toast.error(error.message || "Kunde inte bedöma CV:t"),
+  });
+
   const toggleStatus = useMutation({
     mutationFn: async (job: JobRow) => {
       const next = job.status === "closed" ? "open" : "closed";
