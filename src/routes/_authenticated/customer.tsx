@@ -805,12 +805,35 @@ function CustomerJobsPage() {
                                   key={row.id}
                                   className="space-y-2 rounded-md border bg-card p-2 shadow-sm"
                                 >
-                                  <div className="text-sm font-medium leading-tight">
-                                    {row.candidates?.name ?? "Okänd"}
+                                  <div className="flex items-start justify-between gap-2">
+                                    <div className="text-sm font-medium leading-tight">
+                                      {row.candidates?.name ?? "Okänd"}
+                                    </div>
+                                    {row.ai_score != null && (
+                                      <Badge variant="secondary" className="shrink-0">
+                                        {row.ai_score}/100
+                                      </Badge>
+                                    )}
                                   </div>
                                   <div className="text-xs text-muted-foreground">
                                     {row.jobs?.title ?? "—"}
                                   </div>
+                                  {row.ai_summary && (
+                                    <p className="line-clamp-3 text-xs text-muted-foreground">
+                                      {row.ai_summary}
+                                    </p>
+                                  )}
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-7 w-full text-xs"
+                                    onClick={() => {
+                                      setAssessRow(row);
+                                      setCvText("");
+                                    }}
+                                  >
+                                    Bedöm CV
+                                  </Button>
                                   <Select
                                     value={row.stage}
                                     onValueChange={(next) =>
