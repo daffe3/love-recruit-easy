@@ -8,6 +8,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -51,8 +60,10 @@ type PipelineRow = {
   candidate_id: string;
   job_id: string;
   stage: string;
+  ai_score: number | null;
+  ai_summary: string | null;
   candidates: { name: string } | null;
-  jobs: { title: string } | null;
+  jobs: { title: string; description: string | null } | null;
 };
 
 const STAGES: { value: string; label: string }[] = [
@@ -107,6 +118,9 @@ function CustomerJobsPage() {
 
   const [pipelineJobFilter, setPipelineJobFilter] = useState("all");
   const [pipelineNameFilter, setPipelineNameFilter] = useState("");
+
+  const [assessRow, setAssessRow] = useState<PipelineRow | null>(null);
+  const [cvText, setCvText] = useState("");
 
   const profileQuery = useQuery({
     queryKey: ["my-profile", user?.id],
@@ -172,7 +186,9 @@ function CustomerJobsPage() {
     queryFn: async (): Promise<PipelineRow[]> => {
       const { data, error } = await supabase
         .from("candidate_pipeline")
-        .select("id, candidate_id, job_id, stage, candidates(name), jobs!inner(title, customer_id)")
+        .select(
+          "id, candidate_id, job_id, stage, ai_score, ai_summary, candidates(name), jobs!inner(title, description, customer_id)",
+        )
         .eq("jobs.customer_id", activeCustomerId);
       if (error) throw error;
       return (data ?? []) as unknown as PipelineRow[];
@@ -281,6 +297,55 @@ function CustomerJobsPage() {
       void queryClient.invalidateQueries({ queryKey: ["pipeline"] });
     },
     onError: (error: Error) => toast.error(error.message || "Kunde inte flytta kandidaten"),
+  });
+
+  const assessCv = useMutation({
+    mutationFn: async (row: PipelineRow) => {
+      const { data, error } = await supabase.functions.invoke("assess-cv", {
+        body: {
+          pipeline_id: row.id,
+          cv_text: cvText.trim(),
+          job_description: row.jobs?.description ?? "",
+        },
+      });
+      if (error) {
+        let message = error.message || "Bedömningen misslyckades";
+        const context = (error as { context?: { text?: () => Promise<string> } }).context;
+        if (context && typeof context.text === "function") {
+          try {
+            const parsed = JSON.parse(await context.text()) as {
+              error?: string;
+              message?: string;
+            };
+            message = parsed.error ?? parsed.message ?? message;
+          } catch {
+            // behåll standardmeddelandet
+          }
+        }
+        throw new Error(message);
+      }
+      if (data && typeof data === "object" && "error" in data) {
+        throw new Error(String((data as { error: unknown }).error));
+      }
+      const result = data as { ai_score?: number | null; ai_summary?: string | null } | null;
+      if (result && (result.ai_score != null || result.ai_summary != null)) {
+        const { error: updateError } = await supabase
+          .from("candidate_pipeline")
+          .update({
+            ai_score: result.ai_score ?? null,
+            ai_summary: result.ai_summary ?? null,
+          })
+          .eq("id", row.id);
+        if (updateError) throw updateError;
+      }
+    },
+    onSuccess: () => {
+      toast.success("CV:t har bedömts");
+      setAssessRow(null);
+      setCvText("");
+      void queryClient.invalidateQueries({ queryKey: ["pipeline"] });
+    },
+    onError: (error: Error) => toast.error(error.message || "Kunde inte bedöma CV:t"),
   });
 
   const toggleStatus = useMutation({
@@ -740,12 +805,35 @@ function CustomerJobsPage() {
                                   key={row.id}
                                   className="space-y-2 rounded-md border bg-card p-2 shadow-sm"
                                 >
-                                  <div className="text-sm font-medium leading-tight">
-                                    {row.candidates?.name ?? "Okänd"}
+                                  <div className="flex items-start justify-between gap-2">
+                                    <div className="text-sm font-medium leading-tight">
+                                      {row.candidates?.name ?? "Okänd"}
+                                    </div>
+                                    {row.ai_score != null && (
+                                      <Badge variant="secondary" className="shrink-0">
+                                        {row.ai_score}/100
+                                      </Badge>
+                                    )}
                                   </div>
                                   <div className="text-xs text-muted-foreground">
                                     {row.jobs?.title ?? "—"}
                                   </div>
+                                  {row.ai_summary && (
+                                    <p className="line-clamp-3 text-xs text-muted-foreground">
+                                      {row.ai_summary}
+                                    </p>
+                                  )}
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-7 w-full text-xs"
+                                    onClick={() => {
+                                      setAssessRow(row);
+                                      setCvText("");
+                                    }}
+                                  >
+                                    Bedöm CV
+                                  </Button>
                                   <Select
                                     value={row.stage}
                                     onValueChange={(next) =>
