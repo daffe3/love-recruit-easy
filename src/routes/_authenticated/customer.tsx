@@ -105,6 +105,9 @@ function CustomerJobsPage() {
   const [candNotes, setCandNotes] = useState("");
   const [candJobIds, setCandJobIds] = useState<string[]>([]);
 
+  const [pipelineJobFilter, setPipelineJobFilter] = useState("all");
+  const [pipelineNameFilter, setPipelineNameFilter] = useState("");
+
   const profileQuery = useQuery({
     queryKey: ["my-profile", user?.id],
     enabled: Boolean(user?.id),
