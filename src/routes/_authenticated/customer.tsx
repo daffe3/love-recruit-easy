@@ -677,6 +677,108 @@ function CustomerJobsPage() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          <TabsContent value="pipeline" className="space-y-4">
+            {profileQuery.isLoading ? (
+              <p className="text-sm text-muted-foreground">Laddar…</p>
+            ) : activeCustomerId === "" ? (
+              <p className="text-sm text-muted-foreground">{noCustomerMessage}</p>
+            ) : (
+              <>
+                <div className="flex flex-wrap items-center gap-3">
+                  <Select value={pipelineJobFilter} onValueChange={setPipelineJobFilter}>
+                    <SelectTrigger className="w-56">
+                      <SelectValue placeholder="Alla jobb" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Alla jobb</SelectItem>
+                      {(jobsQuery.data ?? []).map((job) => (
+                        <SelectItem key={job.id} value={job.id}>
+                          {job.title}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Input
+                    className="w-56"
+                    placeholder="Sök kandidatnamn…"
+                    value={pipelineNameFilter}
+                    onChange={(e) => setPipelineNameFilter(e.target.value)}
+                  />
+                </div>
+
+                {pipelineQuery.isLoading ? (
+                  <p className="text-sm text-muted-foreground">Laddar pipeline…</p>
+                ) : pipelineQuery.isError ? (
+                  <p className="text-sm text-destructive">Kunde inte hämta pipelinen.</p>
+                ) : (
+                  <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+                    {STAGES.map((stage) => {
+                      const cards = (pipelineQuery.data ?? []).filter((row) => {
+                        if (row.stage !== stage.value) return false;
+                        if (pipelineJobFilter !== "all" && row.job_id !== pipelineJobFilter)
+                          return false;
+                        const name = row.candidates?.name?.toLowerCase() ?? "";
+                        return name.includes(pipelineNameFilter.trim().toLowerCase());
+                      });
+                      return (
+                        <div key={stage.value} className="rounded-md border bg-muted/40 p-2">
+                          <div className="mb-2 flex items-center justify-between px-1">
+                            <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                              {stage.label}
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              {cards.length}
+                            </span>
+                          </div>
+                          <div className="space-y-2">
+                            {cards.length === 0 ? (
+                              <p className="px-1 py-2 text-xs text-muted-foreground">—</p>
+                            ) : (
+                              cards.map((row) => (
+                                <div
+                                  key={row.id}
+                                  className="space-y-2 rounded-md border bg-card p-2 shadow-sm"
+                                >
+                                  <div className="text-sm font-medium leading-tight">
+                                    {row.candidates?.name ?? "Okänd"}
+                                  </div>
+                                  <div className="text-xs text-muted-foreground">
+                                    {row.jobs?.title ?? "—"}
+                                  </div>
+                                  <Select
+                                    value={row.stage}
+                                    onValueChange={(next) =>
+                                      moveStage.mutate({ id: row.id, stage: next })
+                                    }
+                                    disabled={moveStage.isPending}
+                                  >
+                                    <SelectTrigger
+                                      className="h-7 text-xs"
+                                      aria-label="Byt steg"
+                                    >
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {STAGES.map((s) => (
+                                        <SelectItem key={s.value} value={s.value}>
+                                          {s.label}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </>
+            )}
+          </TabsContent>
         </Tabs>
       </main>
     </div>
