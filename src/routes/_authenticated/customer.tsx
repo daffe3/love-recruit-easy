@@ -370,6 +370,7 @@ function CustomerJobsPage() {
           <TabsList>
             <TabsTrigger value="jobs">Jobb</TabsTrigger>
             <TabsTrigger value="candidates">Kandidater</TabsTrigger>
+            <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
           </TabsList>
 
           <TabsContent value="jobs" className="space-y-6">
