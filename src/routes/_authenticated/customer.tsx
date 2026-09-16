@@ -268,6 +268,21 @@ function CustomerJobsPage() {
     onError: (error: Error) => toast.error(error.message || "Kunde inte spara kandidaten"),
   });
 
+  const moveStage = useMutation({
+    mutationFn: async ({ id, stage }: { id: string; stage: string }) => {
+      const { error } = await supabase
+        .from("candidate_pipeline")
+        .update({ stage })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Kandidaten har flyttats");
+      void queryClient.invalidateQueries({ queryKey: ["pipeline"] });
+    },
+    onError: (error: Error) => toast.error(error.message || "Kunde inte flytta kandidaten"),
+  });
+
   const toggleStatus = useMutation({
     mutationFn: async (job: JobRow) => {
       const next = job.status === "closed" ? "open" : "closed";
