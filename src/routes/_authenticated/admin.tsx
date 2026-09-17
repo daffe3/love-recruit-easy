@@ -137,17 +137,6 @@ function AdminPage() {
         };
       }
 
-      const body: Record<string, string> = {
-        email: normalizedEmail,
-        password,
-        full_name: fullName.trim(),
-        role,
-      };
-      if (role === "customer") {
-        if (customerMode === "existing") body["customer_id"] = customerId;
-        else body["customer_name"] = customerName.trim();
-      }
-
       try {
         return await createAccountOnServer({
           data: {

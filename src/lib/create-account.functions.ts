@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { getRequest } from "@tanstack/react-start/server";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
@@ -30,58 +31,42 @@ export const createAccountFn = createServerFn({ method: "POST" })
       return { ok: false as const, message: "Endast administratörer får skapa konton." };
     }
 
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const email = data.email.toLowerCase();
-    const { data: created, error: createError } = await supabaseAdmin.auth.admin.createUser({
-      email,
-      password: data.password,
-      email_confirm: true,
-    });
-
-    if (createError || !created.user) {
-      const message = createError?.message ?? "Kunde inte skapa kontot.";
-      const duplicate = /already (been )?registered|already exists|user_already_exists/i.test(message);
-      return {
-        ok: false as const,
-        message: duplicate ? "E-postadressen används redan. Välj en annan e-post." : message,
-      };
+    const request = getRequest();
+    const authorization = request?.headers.get("authorization");
+    const supabaseUrl = process.env["SUPABASE_URL"];
+    const publishableKey = process.env["SUPABASE_PUBLISHABLE_KEY"];
+    if (!authorization || !supabaseUrl || !publishableKey) {
+      return { ok: false as const, message: "Din session har gått ut. Logga in igen." };
     }
 
-    let customerId: string | null = null;
-    if (data.role === "customer" && data.customer_id) {
-      const { data: customer, error } = await supabaseAdmin
-        .from("customers")
-        .select("id")
-        .eq("id", data.customer_id)
-        .maybeSingle();
-      if (error || !customer) {
-        await supabaseAdmin.auth.admin.deleteUser(created.user.id);
-        return { ok: false as const, message: "Den valda kunden finns inte längre." };
+    try {
+      const response = await fetch(`${supabaseUrl}/functions/v1/create-account`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: publishableKey,
+          Authorization: authorization,
+        },
+        body: JSON.stringify({ ...data, email: data.email.toLowerCase() }),
+      });
+      const raw = await response.text();
+      let payload: { error?: string; message?: string; ok?: boolean } = {};
+      try {
+        payload = raw ? (JSON.parse(raw) as typeof payload) : {};
+      } catch {
+        payload = { error: raw };
       }
-      customerId = customer.id;
-    } else if (data.role === "customer" && data.customer_name) {
-      const { data: customer, error } = await supabaseAdmin
-        .from("customers")
-        .insert({ name: data.customer_name })
-        .select("id")
-        .single();
-      if (error || !customer) {
-        await supabaseAdmin.auth.admin.deleteUser(created.user.id);
-        return { ok: false as const, message: "Kunden kunde inte skapas. Försök igen." };
+
+      if (!response.ok || payload.error || payload.ok === false) {
+        const message = payload.error ?? payload.message ?? "Kunde inte skapa kontot.";
+        const duplicate = /already (been )?registered|already exists|user_already_exists/i.test(message);
+        return {
+          ok: false as const,
+          message: duplicate ? "E-postadressen används redan. Välj en annan e-post." : message,
+        };
       }
-      customerId = customer.id;
+      return { ok: true as const };
+    } catch {
+      return { ok: false as const, message: "Kunde inte nå kontotjänsten. Försök igen." };
     }
-
-    const { error: profileError } = await supabaseAdmin.from("profiles").insert({
-      id: created.user.id,
-      full_name: data.full_name,
-      role: data.role,
-      customer_id: customerId,
-    });
-    if (profileError) {
-      await supabaseAdmin.auth.admin.deleteUser(created.user.id);
-      return { ok: false as const, message: "Kontot kunde inte kopplas till en profil. Försök igen." };
-    }
-
-    return { ok: true as const };
   });
