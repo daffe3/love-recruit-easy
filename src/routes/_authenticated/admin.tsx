@@ -146,25 +146,38 @@ function AdminPage() {
       }
 
       try {
-        const { data, error } = await supabase.functions.invoke("create-account", { body });
-
-        if (error) {
-          let message = error.message;
-          const context = (error as { context?: Response }).context;
-          if (context && typeof context.text === "function") {
-            try {
-              const raw = await context.text();
-              const parsed = JSON.parse(raw) as { error?: string; message?: string };
-              message = parsed.error ?? parsed.message ?? raw ?? message;
-            } catch {
-              /* behåll ursprungligt felmeddelande */
-            }
-          }
-          return { ok: false, message };
+        const { data: sessionData } = await supabase.auth.getSession();
+        const accessToken = sessionData.session?.access_token;
+        if (!accessToken) {
+          return { ok: false, message: "Din session har gått ut. Logga in igen." };
         }
 
-        const payload = data as { error?: string } | null;
-        if (payload?.error) return { ok: false, message: payload.error };
+        const response = await fetch(
+          `${import.meta.env["VITE_SUPABASE_URL"]}/functions/v1/create-account`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              apikey: import.meta.env["VITE_SUPABASE_PUBLISHABLE_KEY"],
+              Authorization: `Bearer ${accessToken}`,
+            },
+            body: JSON.stringify(body),
+          },
+        );
+        const raw = await response.text();
+        let payload: { error?: string; message?: string } = {};
+        try {
+          payload = raw ? (JSON.parse(raw) as typeof payload) : {};
+        } catch {
+          payload = { error: raw };
+        }
+
+        if (!response.ok || payload.error) {
+          return {
+            ok: false,
+            message: payload.error ?? payload.message ?? "Kunde inte skapa kontot.",
+          };
+        }
         return { ok: true };
       } catch (err) {
         return { ok: false, message: err instanceof Error ? err.message : String(err) };
