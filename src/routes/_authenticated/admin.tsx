@@ -103,12 +103,19 @@ function AdminPage() {
   };
 
   const translateError = (message: string): string => {
-    if (/password should be at least 6 characters/i.test(message))
+    if (/password should be at least 6 characters|minst 6 tecken/i.test(message))
       return "Lösenordet måste vara minst 6 tecken.";
-    if (/already (been )?registered|already in use|används redan/i.test(message))
-      return "E-postadressen används redan.";
+    if (
+      /already (been )?registered|already exists|email address has already|already in use|används redan|user_already_exists/i.test(
+        message,
+      )
+    )
+      return "E-postadressen används redan. Välj en annan e-post.";
+    if (/invalid email|unable to validate email/i.test(message))
+      return "E-postadressen verkar inte vara giltig.";
     return message;
   };
+
 
   const createAccount = useMutation({
     mutationFn: async (): Promise<{ ok: boolean; message?: string }> => {
