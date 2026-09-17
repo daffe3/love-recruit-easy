@@ -123,8 +123,19 @@ function AdminPage() {
         return { ok: false, message: "Lösenordet måste vara minst 6 tecken." };
       }
 
+      const normalizedEmail = email.trim().toLocaleLowerCase("sv-SE");
+      const emailAlreadyExists = (accountsQuery.data ?? []).some(
+        (account) => account.email?.trim().toLocaleLowerCase("sv-SE") === normalizedEmail,
+      );
+      if (emailAlreadyExists) {
+        return {
+          ok: false,
+          message: "E-postadressen används redan. Välj en annan e-post.",
+        };
+      }
+
       const body: Record<string, string> = {
-        email: email.trim(),
+        email: normalizedEmail,
         password,
         full_name: fullName.trim(),
         role,
@@ -310,7 +321,10 @@ function AdminPage() {
                       id="email"
                       type="email"
                       value={email}
-                      onChange={(e) => setEmail(e.target.value)}
+                       onChange={(e) => {
+                         setEmail(e.target.value);
+                         if (formError) setFormError(null);
+                       }}
                       placeholder="anna@foretag.se"
                     />
                   </div>
