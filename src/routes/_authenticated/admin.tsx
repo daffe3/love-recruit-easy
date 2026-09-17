@@ -71,6 +71,7 @@ function AdminPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
+  const [formError, setFormError] = useState<string | null>(null);
 
   const customersQuery = useQuery({
     queryKey: ["customers"],
@@ -98,6 +99,15 @@ function AdminPage() {
     setEmail("");
     setPassword("");
     setFullName("");
+    setFormError(null);
+  };
+
+  const translateError = (message: string): string => {
+    if (/password should be at least 6 characters/i.test(message))
+      return "Lösenordet måste vara minst 6 tecken.";
+    if (/already (been )?registered|already in use|används redan/i.test(message))
+      return "E-postadressen används redan.";
+    return message;
   };
 
   const createAccount = useMutation({
@@ -142,7 +152,7 @@ function AdminPage() {
       void queryClient.invalidateQueries({ queryKey: ["customers"] });
     },
     onError: (error: Error) => {
-      toast.error(error.message || "Kunde inte skapa kontot");
+      setFormError(translateError(error.message || "Kunde inte skapa kontot"));
     },
   });
 
@@ -187,6 +197,7 @@ function AdminPage() {
                 className="space-y-5"
                 onSubmit={(e) => {
                   e.preventDefault();
+                  setFormError(null);
                   createAccount.mutate();
                 }}
               >
@@ -292,8 +303,15 @@ function AdminPage() {
                       onChange={(e) => setPassword(e.target.value)}
                       autoComplete="new-password"
                     />
+                    <p className="text-xs text-muted-foreground">Minst 6 tecken</p>
                   </div>
                 </div>
+
+                {formError && (
+                  <p role="alert" className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                    {formError}
+                  </p>
+                )}
 
                 <Button type="submit" disabled={!canSubmit || createAccount.isPending}>
                   {createAccount.isPending ? "Skapar…" : "Skapa konto"}
