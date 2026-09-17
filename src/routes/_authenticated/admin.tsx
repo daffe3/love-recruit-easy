@@ -71,6 +71,7 @@ function AdminPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
+  const [formError, setFormError] = useState<string | null>(null);
 
   const customersQuery = useQuery({
     queryKey: ["customers"],
