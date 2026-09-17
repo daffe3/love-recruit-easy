@@ -197,6 +197,7 @@ function AdminPage() {
                 className="space-y-5"
                 onSubmit={(e) => {
                   e.preventDefault();
+                  setFormError(null);
                   createAccount.mutate();
                 }}
               >
@@ -302,8 +303,15 @@ function AdminPage() {
                       onChange={(e) => setPassword(e.target.value)}
                       autoComplete="new-password"
                     />
+                    <p className="text-xs text-muted-foreground">Minst 6 tecken</p>
                   </div>
                 </div>
+
+                {formError && (
+                  <p role="alert" className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                    {formError}
+                  </p>
+                )}
 
                 <Button type="submit" disabled={!canSubmit || createAccount.isPending}>
                   {createAccount.isPending ? "Skapar…" : "Skapa konto"}
