@@ -111,7 +111,11 @@ function AdminPage() {
   };
 
   const createAccount = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (): Promise<{ ok: boolean; message?: string }> => {
+      if (password.length < 6) {
+        return { ok: false, message: "Lösenordet måste vara minst 6 tecken." };
+      }
+
       const body: Record<string, string> = {
         email: email.trim(),
         password,
@@ -123,28 +127,36 @@ function AdminPage() {
         else body["customer_name"] = customerName.trim();
       }
 
-      const { data, error } = await supabase.functions.invoke("create-account", { body });
+      try {
+        const { data, error } = await supabase.functions.invoke("create-account", { body });
 
-      if (error) {
-        let message = error.message;
-        const context = (error as { context?: Response }).context;
-        if (context && typeof context.text === "function") {
-          try {
-            const raw = await context.text();
-            const parsed = JSON.parse(raw) as { error?: string; message?: string };
-            message = parsed.error ?? parsed.message ?? raw ?? message;
-          } catch {
-            /* behåll ursprungligt felmeddelande */
+        if (error) {
+          let message = error.message;
+          const context = (error as { context?: Response }).context;
+          if (context && typeof context.text === "function") {
+            try {
+              const raw = await context.text();
+              const parsed = JSON.parse(raw) as { error?: string; message?: string };
+              message = parsed.error ?? parsed.message ?? raw ?? message;
+            } catch {
+              /* behåll ursprungligt felmeddelande */
+            }
           }
+          return { ok: false, message };
         }
-        throw new Error(message);
-      }
 
-      const payload = data as { error?: string } | null;
-      if (payload?.error) throw new Error(payload.error);
-      return payload;
+        const payload = data as { error?: string } | null;
+        if (payload?.error) return { ok: false, message: payload.error };
+        return { ok: true };
+      } catch (err) {
+        return { ok: false, message: err instanceof Error ? err.message : String(err) };
+      }
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
+      if (!result.ok) {
+        setFormError(translateError(result.message || "Kunde inte skapa kontot"));
+        return;
+      }
       toast.success("Kontot har skapats");
       resetForm();
       setShowForm(false);
@@ -162,6 +174,7 @@ function AdminPage() {
     fullName.trim() !== "" &&
     (role === "admin" ||
       (customerMode === "existing" ? customerId !== "" : customerName.trim() !== ""));
+
 
   return (
     <div className="flex min-h-screen flex-col">
