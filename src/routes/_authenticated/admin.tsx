@@ -99,6 +99,15 @@ function AdminPage() {
     setEmail("");
     setPassword("");
     setFullName("");
+    setFormError(null);
+  };
+
+  const translateError = (message: string): string => {
+    if (/password should be at least 6 characters/i.test(message))
+      return "Lösenordet måste vara minst 6 tecken.";
+    if (/already (been )?registered|already in use|används redan/i.test(message))
+      return "E-postadressen används redan.";
+    return message;
   };
 
   const createAccount = useMutation({
