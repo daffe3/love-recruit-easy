@@ -152,7 +152,7 @@ function AdminPage() {
       void queryClient.invalidateQueries({ queryKey: ["customers"] });
     },
     onError: (error: Error) => {
-      toast.error(error.message || "Kunde inte skapa kontot");
+      setFormError(translateError(error.message || "Kunde inte skapa kontot"));
     },
   });
 
