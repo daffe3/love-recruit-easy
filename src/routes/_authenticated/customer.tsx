@@ -3,6 +3,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { assessCvFn } from "@/lib/assess-cv.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -301,43 +302,20 @@ function CustomerJobsPage() {
 
   const assessCv = useMutation({
     mutationFn: async (row: PipelineRow) => {
-      const { data, error } = await supabase.functions.invoke("assess-cv", {
-        body: {
-          pipeline_id: row.id,
+      const result = await assessCvFn({
+        data: {
           cv_text: cvText.trim(),
           job_description: row.jobs?.description ?? "",
         },
       });
-      if (error) {
-        let message = error.message || "Bedömningen misslyckades";
-        const context = (error as { context?: { text?: () => Promise<string> } }).context;
-        if (context && typeof context.text === "function") {
-          try {
-            const parsed = JSON.parse(await context.text()) as {
-              error?: string;
-              message?: string;
-            };
-            message = parsed.error ?? parsed.message ?? message;
-          } catch {
-            // behåll standardmeddelandet
-          }
-        }
-        throw new Error(message);
-      }
-      if (data && typeof data === "object" && "error" in data) {
-        throw new Error(String((data as { error: unknown }).error));
-      }
-      const result = data as { ai_score?: number | null; ai_summary?: string | null } | null;
-      if (result && (result.ai_score != null || result.ai_summary != null)) {
-        const { error: updateError } = await supabase
-          .from("candidate_pipeline")
-          .update({
-            ai_score: result.ai_score ?? null,
-            ai_summary: result.ai_summary ?? null,
-          })
-          .eq("id", row.id);
-        if (updateError) throw updateError;
-      }
+      const { error: updateError } = await supabase
+        .from("candidate_pipeline")
+        .update({
+          ai_score: result.ai_score,
+          ai_summary: result.ai_summary,
+        })
+        .eq("id", row.id);
+      if (updateError) throw updateError;
     },
     onSuccess: () => {
       toast.success("CV:t har bedömts");
