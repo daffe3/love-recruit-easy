@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -24,6 +25,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useAuth } from "@/lib/auth";
+import { createAccountFn } from "@/lib/create-account.functions";
 
 type AccountRow = {
   id: string;
@@ -72,6 +74,7 @@ function AdminPage() {
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
+  const createAccountOnServer = useServerFn(createAccountFn);
 
   const customersQuery = useQuery({
     queryKey: ["customers"],
@@ -146,39 +149,20 @@ function AdminPage() {
       }
 
       try {
-        const { data: sessionData } = await supabase.auth.getSession();
-        const accessToken = sessionData.session?.access_token;
-        if (!accessToken) {
-          return { ok: false, message: "Din session har gått ut. Logga in igen." };
-        }
-
-        const response = await fetch(
-          `${import.meta.env["VITE_SUPABASE_URL"]}/functions/v1/create-account`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              apikey: import.meta.env["VITE_SUPABASE_PUBLISHABLE_KEY"],
-              Authorization: `Bearer ${accessToken}`,
-            },
-            body: JSON.stringify(body),
+        return await createAccountOnServer({
+          data: {
+            email: normalizedEmail,
+            password,
+            full_name: fullName.trim(),
+            role,
+            ...(role === "customer" && customerMode === "existing"
+              ? { customer_id: customerId }
+              : {}),
+            ...(role === "customer" && customerMode === "new"
+              ? { customer_name: customerName.trim() }
+              : {}),
           },
-        );
-        const raw = await response.text();
-        let payload: { error?: string; message?: string } = {};
-        try {
-          payload = raw ? (JSON.parse(raw) as typeof payload) : {};
-        } catch {
-          payload = { error: raw };
-        }
-
-        if (!response.ok || payload.error) {
-          return {
-            ok: false,
-            message: payload.error ?? payload.message ?? "Kunde inte skapa kontot.",
-          };
-        }
-        return { ok: true };
+        });
       } catch (err) {
         return { ok: false, message: err instanceof Error ? err.message : String(err) };
       }
