@@ -869,6 +869,56 @@ function CustomerJobsPage() {
           </TabsContent>
         </Tabs>
       </main>
+
+      <Dialog
+        open={assessRow !== null}
+        onOpenChange={(open) => {
+          if (!open && !assessCv.isPending) {
+            setAssessRow(null);
+            setCvText("");
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Bedöm CV</DialogTitle>
+            <DialogDescription>
+              {assessRow
+                ? `${assessRow.candidates?.name ?? "Kandidaten"} – ${assessRow.jobs?.title ?? ""}. Klistra in CV:t som ren text nedan.`
+                : "Klistra in CV:t som ren text nedan."}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="cv-text">CV-text</Label>
+            <Textarea
+              id="cv-text"
+              rows={10}
+              value={cvText}
+              onChange={(e) => setCvText(e.target.value)}
+              placeholder="Klistra in kandidatens CV här…"
+              disabled={assessCv.isPending}
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setAssessRow(null);
+                setCvText("");
+              }}
+              disabled={assessCv.isPending}
+            >
+              Avbryt
+            </Button>
+            <Button
+              onClick={() => assessRow && assessCv.mutate(assessRow)}
+              disabled={cvText.trim() === "" || assessCv.isPending}
+            >
+              {assessCv.isPending ? "AI:n bedömer…" : "Starta bedömning"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
