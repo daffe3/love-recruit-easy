@@ -21,6 +21,22 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
 function Dashboard() {
   const { user, signOut } = useAuth();
 
+  const profileQuery = useQuery({
+    queryKey: ["my-profile", user?.id],
+    enabled: Boolean(user?.id),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("role, customer_id")
+        .eq("id", user!.id)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const isAdmin = profileQuery.data?.role === "admin";
+
   return (
     <div className="flex min-h-screen flex-col">
       <header className="flex items-center justify-between border-b px-6 py-4">
@@ -28,6 +44,11 @@ function Dashboard() {
           ATS
         </Link>
         <div className="flex items-center gap-4">
+          {isAdmin && (
+            <Button variant="outline" size="sm" asChild>
+              <Link to="/admin">Adminpanel</Link>
+            </Button>
+          )}
           <span className="text-sm text-muted-foreground">{user?.email}</span>
           <Button variant="outline" size="sm" onClick={() => signOut()}>
             Logga ut
